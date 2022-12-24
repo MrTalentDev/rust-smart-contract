@@ -1,4 +1,4 @@
-#This repo is an R&D experiment
+# This repo is an R&D experiment
 
 Research goals:
 1. Mint Error: 21 when hardcoding amount using U512::from(u64)
