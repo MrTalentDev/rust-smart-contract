@@ -23,9 +23,13 @@ pub extern "C" fn approve(){
     let approval_list = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &caller.to_string()).unwrap_or_revert();
     let res = match approval_list{
         Some(mut v) => v.push(new_account),
-        None => {}
+        None => {
+            let mut _approval_list: Vec<AccountHash> = Vec::new();
+            _approval_list.push(new_account);
+            storage::dictionary_put(approval_list_uref, &caller.to_string(), _approval_list);
+        }
     };
-    storage::write(approval_list_uref, res)
+    storage::write(approval_list_uref, res);
 }
 
 #[no_mangle]
@@ -77,6 +81,13 @@ pub extern "C" fn call(){
     let source: URef = account::get_main_purse();
     let owner_account: AccountHash = runtime::get_caller();
     let approval_list: URef = storage::new_dictionary(APPROVED_ACCOUNTS).unwrap_or_revert();
+    /*
+    storage::dictionary_put(
+        balances_uref,
+        &caller_account_hash_as_string,
+        balance_after_mint,
+    );
+    */
     let named_keys = {
         let mut named_keys = NamedKeys::new();
         named_keys.insert(String::from(APPROVED_ACCOUNTS), approval_list.into());
