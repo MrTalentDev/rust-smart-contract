@@ -15,18 +15,23 @@ const OWNER_ACCOUNT: &str = "owner";
 #[no_mangle]
 pub extern "C" fn approve(){
     let caller: AccountHash = runtime::get_caller();
+    let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
     let new_account: AccountHash = runtime::get_named_arg(ARG_ACCOUNT);
     let approval_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
-    let approval_list = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &caller.to_string()).unwrap_or_revert();
+    let approval_list = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
     let res = match approval_list{
         Some(mut v) => v.push(new_account),
         None => {
             let mut _approval_list: Vec<AccountHash> = Vec::new();
             _approval_list.push(new_account);
-            storage::dictionary_put(approval_list_uref, &caller.to_string(), _approval_list);
+            storage::dictionary_put(approval_list_uref, &owner_account.to_string(), _approval_list);
         }
     };
     storage::write(approval_list_uref, res);
@@ -35,17 +40,22 @@ pub extern "C" fn approve(){
 #[no_mangle]
 pub extern "C" fn redeem(){
     let caller: AccountHash = runtime::get_caller();
-    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let approval_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
-        Some(key) => key,
-        None => runtime::revert(ApiError::MissingKey)
-    }.into_uref().unwrap_or_revert();
-    let approval_list: Vec<AccountHash> = storage::read_or_revert(approval_list_uref);
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
     let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    let approval_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    let approval_list_option = storage::dictionary_get(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
+    let approval_list:Vec<AccountHash> = match approval_list_option{
+        Some(list) => list,
+        None => runtime::revert(ApiError::MissingKey)
+    };
+
     if owner_account != caller && !approval_list.contains(&caller){
         runtime::revert(ApiError::PermissionDenied);
     };
