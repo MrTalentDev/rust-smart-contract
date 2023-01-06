@@ -1,12 +1,18 @@
 #![no_std]
 #![no_main]
 extern crate alloc;
-use alloc::{string::{String, ToString}, vec::Vec};
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use casper_contract::{
     contract_api::{account, runtime, system, storage},
     unwrap_or_revert::UnwrapOrRevert
 };
-use casper_types::{URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint};
+use casper_types::{CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter};
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
@@ -14,7 +20,6 @@ const APPROVED_ACCOUNTS: &str = "approved";
 const OWNER_ACCOUNT: &str = "owner";
 #[no_mangle]
 pub extern "C" fn approve(){
-    let caller: AccountHash = runtime::get_caller();
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
@@ -111,7 +116,34 @@ pub extern "C" fn call(){
     // purse is accessible as a UREF
     runtime::put_key(&destination_name, destination.into());
     runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
-    let entry_points = EntryPoints::new();
+    let entry_points = {
+        let mut entry_points = EntryPoints::new();
+        let approve = EntryPoint::new(
+            "approve",
+            vec![Parameter::new("new_account", CLType::Any)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        let redeem = EntryPoint::new(
+            "redeem",
+            vec![Parameter::new("amount", CLType::U512)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        let deposit = EntryPoint::new(
+            "deposit",
+            vec![Parameter::new("amount", CLType::U512), Parameter::new("destination", CLType::String)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        entry_points.add_entry_point(approve);
+        entry_points.add_entry_point(redeem);
+        entry_points.add_entry_point(deposit);
+        entry_points
+    };
 
     storage::new_contract(
         entry_points,
