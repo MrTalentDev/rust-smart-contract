@@ -1,6 +1,11 @@
-# This repo is an R&D experiment
-
-Research goals:
-1. Mint Error: 21 when hardcoding amount using U512::from(u64)
-2. Lock funds up in a newly created purse and restrict access rights
-3. Redeem funds only if access rights were granted in step 2
+# Lock Casper in a Smart Contract
+Approved redemption of Tokens from Contract purse
+## Entry Points
+0. Call
+Create a contract purse and transfer [amount] tokens into it.
+1. Approve
+Approve an account hash => owner of that account can redeem tokens from the contract.
+2. Deposit
+Transfer tokens from account's main purse to an existing contract purse.
+3. Redeem
+Redeem tokens form an existing contract purse. Only possible if either in contract purse owner's approval list or the contract purse owner themself.
