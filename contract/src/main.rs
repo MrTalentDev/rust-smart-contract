@@ -120,7 +120,7 @@ pub extern "C" fn call(){
         let mut entry_points = EntryPoints::new();
         let approve = EntryPoint::new(
             "approve",
-            vec![Parameter::new("new_account", CLType::Any)],
+            vec![Parameter::new("account", CLType::Any)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract
@@ -148,7 +148,7 @@ pub extern "C" fn call(){
     storage::new_contract(
         entry_points,
         Some(named_keys),
-        Some("temp".to_string()),
-        Some("temp".to_string()),
+        Some("contract_hash".to_string()),
+        Some("contract_uref".to_string()),
     );
 }
