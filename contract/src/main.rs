@@ -23,19 +23,66 @@ pub extern "C" fn migrate_and_fund(){
     // access to this contract should be restricted.
     // this contract should only be called once when installing.
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let destination_name: String = runtime::get_named_arg(ARG_DESTINATION);
     let source: URef = account::get_main_purse();
     let owner_account: AccountHash = runtime::get_caller();
-    let approval_list: URef = storage::new_dictionary(APPROVED_ACCOUNTS).unwrap_or_revert();
 
     // new purse is created
     let destination = system::create_purse();
     system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
 
     // store data on chain
-    runtime::put_key(&String::from(APPROVED_ACCOUNTS), approval_list.into());
-    runtime::put_key(&destination_name, destination.into());
-    runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
+    //runtime::put_key(&String::from(APPROVED_ACCOUNTS), approved_list.into());
+    //runtime::put_key(&destination_name, destination.into());
+    //runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
+
+    let entry_points = {
+        let mut entry_points = EntryPoints::new();
+        let approve = EntryPoint::new(
+            "approve",
+            vec![Parameter::new(ARG_ACCOUNT, CLType::Any)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        let redeem = EntryPoint::new(
+            "redeem",
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        let deposit = EntryPoint::new(
+            "deposit",
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512), Parameter::new(ARG_DESTINATION, CLType::String)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        entry_points.add_entry_point(approve);
+        entry_points.add_entry_point(redeem);
+        entry_points.add_entry_point(deposit);
+        entry_points.add_entry_point(migrate);
+        entry_points
+    };
+    let named_keys = {
+        let mut named_keys = NamedKeys::new();
+        // store the installer of the child contract
+        // question: is this the parent contract or the account_hash of the user calling?
+        named_keys.insert(OWNER_ACCOUNT.to_string(), owner_account.into());
+        let approved_list = storage::new_dictionary("approved_list").unwrap_or_revert();
+        named_keys.insert("approved_list".to_string(), approved_list.into());
+        // Warning: if key exists on different contract, deploy will fail ? to be investigated.
+        let destination_uref = storage::new_uref(ARG_DESTINATION).unwrap_or_revert();
+        named_keys.insert(ARG_DESTINATION.to_string(), destination.into());
+
+        named_keys
+    };
+    let (contract_hash, contract_version) = storage::new_contract(
+        entry_points,
+        Some(named_keys),
+        Some("child_contract_hash".to_string()),
+        Some("child_contract_uref".to_string()),
+    );
 }
 
 #[no_mangle]
@@ -46,23 +93,23 @@ pub extern "C" fn approve(){
     }.into_uref().unwrap_or_revert();
     let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
     let new_account: AccountHash = runtime::get_named_arg(ARG_ACCOUNT);
-    let approval_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
+    let approved_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
-    let approval_list = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
-    let res = match approval_list{
+    let approved_list = storage::dictionary_get::<Vec<AccountHash>>(approved_list_uref, &owner_account.to_string()).unwrap_or_revert();
+    let res = match approved_list{
         Some(mut v) => {
             v.push(new_account);
             v
         },
         None => {
-            let mut _approval_list: Vec<AccountHash> = Vec::new();
-            _approval_list.push(new_account);
-            _approval_list
+            let mut _approved_list: Vec<AccountHash> = Vec::new();
+            _approved_list.push(new_account);
+            _approved_list
         }
     };
-    storage::dictionary_put(approval_list_uref, &owner_account.to_string(), res);
+    storage::dictionary_put(approved_list_uref, &owner_account.to_string(), res);
 }
 
 #[no_mangle]
@@ -74,17 +121,17 @@ pub extern "C" fn redeem(){
     }.into_uref().unwrap_or_revert();
     let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let approval_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
+    let approved_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
-    let approval_list_option = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
-    let approval_list:Vec<AccountHash> = match approval_list_option{
+    let approved_list_option = storage::dictionary_get::<Vec<AccountHash>>(approved_list_uref, &owner_account.to_string()).unwrap_or_revert();
+    let approved_list:Vec<AccountHash> = match approved_list_option{
         Some(list) => list,
         None => runtime::revert(ApiError::MissingKey)
     };
 
-    if owner_account != caller && !approval_list.contains(&caller){
+    if owner_account != caller && !approved_list.contains(&caller){
         runtime::revert(ApiError::PermissionDenied);
     };
     let destination_purse_uref: URef = account::get_main_purse();
@@ -118,21 +165,21 @@ pub extern "C" fn call(){
         let mut entry_points = EntryPoints::new();
         let approve = EntryPoint::new(
             "approve",
-            vec![Parameter::new("account", CLType::Any)],
+            vec![Parameter::new(ARG_ACCOUNT, CLType::Any)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
         let redeem = EntryPoint::new(
             "redeem",
-            vec![Parameter::new("amount", CLType::U512)],
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
         let deposit = EntryPoint::new(
             "deposit",
-            vec![Parameter::new("amount", CLType::U512), Parameter::new("destination", CLType::String)],
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512), Parameter::new(ARG_DESTINATION, CLType::String)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract
@@ -154,8 +201,8 @@ pub extern "C" fn call(){
     let (contract_hash, contract_version) = storage::new_contract(
         entry_points,
         Some(named_keys),
-        Some("contract_hash".to_string()),
-        Some("contract_uref".to_string()),
+        Some("parent_contract_hash".to_string()),
+        Some("parent_contract_uref".to_string()),
     );
     // call the contract's migration endpoint ("migrate") to store URefs 
     // within the context of contract, rather than account.
