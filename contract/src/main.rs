@@ -32,14 +32,17 @@ pub extern "C" fn approve(){
     }.into_uref().unwrap_or_revert();
     let approval_list = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
     let res = match approval_list{
-        Some(mut v) => v.push(new_account),
+        Some(mut v) => {
+            v.push(new_account);
+            v
+        },
         None => {
             let mut _approval_list: Vec<AccountHash> = Vec::new();
             _approval_list.push(new_account);
-            storage::dictionary_put(approval_list_uref, &owner_account.to_string(), _approval_list);
+            _approval_list
         }
     };
-    storage::write(approval_list_uref, res);
+    storage::dictionary_put(approval_list_uref, &owner_account.to_string(), res);
 }
 
 #[no_mangle]
@@ -55,7 +58,7 @@ pub extern "C" fn redeem(){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
-    let approval_list_option = storage::dictionary_get(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
+    let approval_list_option = storage::dictionary_get::<Vec<AccountHash>>(approval_list_uref, &owner_account.to_string()).unwrap_or_revert();
     let approval_list:Vec<AccountHash> = match approval_list_option{
         Some(list) => list,
         None => runtime::revert(ApiError::MissingKey)
