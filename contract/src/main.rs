@@ -108,7 +108,6 @@ pub extern "C" fn call(){
     */
     let named_keys = {
         let mut named_keys = NamedKeys::new();
-        named_keys.insert(String::from(APPROVED_ACCOUNTS), approval_list.into());
         named_keys
     };
 
@@ -117,6 +116,7 @@ pub extern "C" fn call(){
     // amount is transferred into purse
     system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
     // purse is accessible as a UREF
+    runtime::put_key(String::from(APPROVED_ACCOUNTS), approval_list.into());
     runtime::put_key(&destination_name, destination.into());
     runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
     let entry_points = {

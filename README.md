@@ -12,4 +12,5 @@ Redeem tokens form an existing contract purse. Only possible if either in contra
 
 # Issues
 Approval list and owner stored under account's named_keys. \
-For production make sure this is not the case => solution will be based off CEP-78.
+For production make sure this is not the case => solution will be based off CEP-78. \
+TBD: Start using Github Issues and remove this doc.
