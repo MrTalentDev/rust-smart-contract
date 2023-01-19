@@ -16,7 +16,7 @@ use casper_types::{CLType, EntryPointAccess, EntryPointType, URef, U512, Key, Ap
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
-const APPROVED_ACCOUNTS: &str = "approved";
+const APPROVED_LIST: &str = "approved_list";
 const OWNER_ACCOUNT: &str = "owner";
 
 /*
@@ -41,7 +41,7 @@ pub extern "C" fn migrate_and_fund(){
     system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
 
     // store data on chain
-    //runtime::put_key(&String::from(APPROVED_ACCOUNTS), approved_list.into());
+    //runtime::put_key(&String::from(APPROVED_LIST), approved_list.into());
     //runtime::put_key(&destination_name, destination.into());
     //runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
 
@@ -80,8 +80,8 @@ pub extern "C" fn migrate_and_fund(){
         // question: is this the parent contract or the account_hash of the user calling?
         // for now not relevant as migrate can only be called from call() in parent.
         named_keys.insert(OWNER_ACCOUNT.to_string(), owner_account.into());
-        let approved_list = storage::new_dictionary("approved_list").unwrap_or_revert();
-        named_keys.insert("approved_list".to_string(), approved_list.into());
+        let approved_list = storage::new_dictionary(APPROVED_LIST).unwrap_or_revert();
+        named_keys.insert(APPROVED_LIST.to_string(), approved_list.into());
         // Warning: if key exists on different contract, deploy will fail ? to be investigated.
         let destination_uref = storage::new_uref(ARG_DESTINATION).unwrap_or_revert();
         named_keys.insert(ARG_DESTINATION.to_string(), destination.into());
@@ -104,7 +104,7 @@ pub extern "C" fn approve(){
     }.into_uref().unwrap_or_revert();
     let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
     let new_account: AccountHash = runtime::get_named_arg(ARG_ACCOUNT);
-    let approved_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
+    let approved_list_uref: URef = match runtime::get_key(APPROVED_LIST){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
@@ -132,7 +132,7 @@ pub extern "C" fn redeem(){
     }.into_uref().unwrap_or_revert();
     let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let approved_list_uref: URef = match runtime::get_key(APPROVED_ACCOUNTS){
+    let approved_list_uref: URef = match runtime::get_key(APPROVED_LIST){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
