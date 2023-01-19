@@ -18,6 +18,16 @@ const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
 const APPROVED_ACCOUNTS: &str = "approved";
 const OWNER_ACCOUNT: &str = "owner";
+
+/*
+
+1. deploy parent contract => installs child contract
+2. call entry points of child contract -> query parent contract to find child contract hash
+3. experiment and maybe allow for multiple child contracts to be installed
+
+
+*/
+
 #[no_mangle]
 pub extern "C" fn migrate_and_fund(){
     // access to this contract should be restricted.
@@ -68,6 +78,7 @@ pub extern "C" fn migrate_and_fund(){
         let mut named_keys = NamedKeys::new();
         // store the installer of the child contract
         // question: is this the parent contract or the account_hash of the user calling?
+        // for now not relevant as migrate can only be called from call() in parent.
         named_keys.insert(OWNER_ACCOUNT.to_string(), owner_account.into());
         let approved_list = storage::new_dictionary("approved_list").unwrap_or_revert();
         named_keys.insert("approved_list".to_string(), approved_list.into());
