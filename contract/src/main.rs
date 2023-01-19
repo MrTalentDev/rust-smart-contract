@@ -12,12 +12,32 @@ use casper_contract::{
     contract_api::{account, runtime, system, storage},
     unwrap_or_revert::UnwrapOrRevert
 };
-use casper_types::{CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter};
+use casper_types::{CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
 const APPROVED_ACCOUNTS: &str = "approved";
 const OWNER_ACCOUNT: &str = "owner";
+#[no_mangle]
+pub extern "C" fn migrate_and_fund(){
+    // access to this contract should be restricted.
+    // this contract should only be called once when installing.
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    let destination_name: String = runtime::get_named_arg(ARG_DESTINATION);
+    let source: URef = account::get_main_purse();
+    let owner_account: AccountHash = runtime::get_caller();
+    let approval_list: URef = storage::new_dictionary(APPROVED_ACCOUNTS).unwrap_or_revert();
+
+    // new purse is created
+    let destination = system::create_purse();
+    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
+
+    // store data on chain
+    runtime::put_key(&String::from(APPROVED_ACCOUNTS), approval_list.into());
+    runtime::put_key(&destination_name, destination.into());
+    runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
+}
+
 #[no_mangle]
 pub extern "C" fn approve(){
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
@@ -94,31 +114,6 @@ pub extern "C" fn deposit(){
 }
 #[no_mangle]
 pub extern "C" fn call(){
-    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let destination_name: String = runtime::get_named_arg(ARG_DESTINATION);
-    let source: URef = account::get_main_purse();
-    let owner_account: AccountHash = runtime::get_caller();
-    let approval_list: URef = storage::new_dictionary(APPROVED_ACCOUNTS).unwrap_or_revert();
-    /*
-    storage::dictionary_put(
-        balances_uref,
-        &caller_account_hash_as_string,
-        balance_after_mint,
-    );
-    */
-    let named_keys = {
-        let mut named_keys = NamedKeys::new();
-        named_keys
-    };
-
-    // new purse is created
-    let destination = system::create_purse();
-    // amount is transferred into purse
-    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
-    // purse is accessible as a UREF
-    runtime::put_key(String::from(APPROVED_ACCOUNTS), approval_list.into());
-    runtime::put_key(&destination_name, destination.into());
-    runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
     let entry_points = {
         let mut entry_points = EntryPoints::new();
         let approve = EntryPoint::new(
@@ -142,16 +137,32 @@ pub extern "C" fn call(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
+        let migrate = EntryPoint::new(
+            "migrate",
+            vec![],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract,
+        );
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
+        entry_points.add_entry_point(migrate);
         entry_points
     };
-
-    storage::new_contract(
+    let named_keys = NamedKeys::new();
+    let (contract_hash, contract_version) = storage::new_contract(
         entry_points,
         Some(named_keys),
         Some("contract_hash".to_string()),
         Some("contract_uref".to_string()),
+    );
+    // call the contract's migration endpoint ("migrate") to store URefs 
+    // within the context of contract, rather than account.
+    runtime::call_contract::<()>(
+        contract_hash,
+        "migrate",
+        runtime_args! {
+        },
     );
 }
