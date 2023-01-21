@@ -30,20 +30,14 @@ const OWNER_ACCOUNT: &str = "owner";
 
 #[no_mangle]
 pub extern "C" fn migrate_and_fund(){
-    // access to this contract should be restricted.
-    // this contract should only be called once when installing.
+    // TBD: restrict access to this entry_point of parent contract.
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
     let source: URef = account::get_main_purse();
     let owner_account: AccountHash = runtime::get_caller();
 
     // new purse is created
     let destination = system::create_purse();
-    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
-
-    // store data on chain
-    //runtime::put_key(&String::from(APPROVED_LIST), approved_list.into());
-    //runtime::put_key(&destination_name, destination.into());
-    //runtime::put_key(OWNER_ACCOUNT, owner_account.into());    
+    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();    
 
     let entry_points = {
         let mut entry_points = EntryPoints::new();
@@ -196,7 +190,7 @@ pub extern "C" fn call(){
         );
         let migrate = EntryPoint::new(
             "migrate",
-            vec![],
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract,
