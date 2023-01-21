@@ -12,7 +12,7 @@ use casper_contract::{
     contract_api::{account, runtime, system, storage},
     unwrap_or_revert::UnwrapOrRevert
 };
-use casper_types::{CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
+use casper_types::{AccessRights, CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
@@ -33,7 +33,8 @@ pub extern "C" fn migrate(){
     // TBD: restrict access to this entry_point of parent contract.
     // this may not work.
     let owner_account: AccountHash = runtime::get_named_arg("owner_account");
-    let destination: URef = runtime::get_named_arg("destination");
+    // default value for contract purse
+    let destination: AccountHash = AccountHash::new([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
     let entry_points = {
         let mut entry_points = EntryPoints::new();
         let approve = EntryPoint::new(
@@ -57,9 +58,17 @@ pub extern "C" fn migrate(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
+        let fund = EntryPoint::new(
+            "fund",
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
+        entry_points.add_entry_point(fund);
         entry_points
     };
     let named_keys = {
@@ -82,6 +91,25 @@ pub extern "C" fn migrate(){
         Some("child_contract_hash".to_string()),
         Some("child_contract_uref".to_string()),
     );
+}
+
+#[no_mangle]
+pub extern "C" fn fund(){
+    // account::get_main_purse() causes an invalid Context error.
+    let source: URef = account::get_main_purse();
+    let destination: URef = system::create_purse();
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
+    // before this operation, stored_purse_uref is a default value.
+    
+    /*
+    let stored_purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    // override default value with newly created purse
+    storage::write(stored_purse_uref, destination);
+    */
 }
 
 #[no_mangle]
@@ -133,12 +161,11 @@ pub extern "C" fn redeem(){
     if owner_account != caller && !approved_list.contains(&caller){
         runtime::revert(ApiError::PermissionDenied);
     };
-    let destination_purse_uref: URef = account::get_main_purse();
     let stored_purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
-    system::transfer_from_purse_to_purse(stored_purse_uref, destination_purse_uref, amount, None);
+    system::transfer_from_purse_to_account(stored_purse_uref, caller, amount, None);
 }
 #[no_mangle]
 pub extern "C" fn deposit(){
@@ -185,15 +212,23 @@ pub extern "C" fn call(){
         );
         let migrate = EntryPoint::new(
             "migrate",
-            vec![Parameter::new(ARG_AMOUNT, CLType::U512), Parameter::new("destination", CLType::URef), Parameter::new("owner_account", CLType::Key)],
+            vec![Parameter::new("owner_account", CLType::Key), Parameter::new("source", CLType::URef), Parameter::new(ARG_AMOUNT, CLType::U512)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract,
+        );
+        let fund = EntryPoint::new(
+            "fund",
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
+            CLType::Unit,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
         );
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
         entry_points.add_entry_point(migrate);
+        entry_points.add_entry_point(fund);
         entry_points
     };
     let named_keys = NamedKeys::new();
@@ -205,23 +240,18 @@ pub extern "C" fn call(){
     );
     // call the contract's migration endpoint ("migrate") to store URefs 
     // within the context of contract, rather than account.
-    let amount:U512 = runtime::get_named_arg(ARG_AMOUNT);
     let source: URef = account::get_main_purse();
     let owner_account: AccountHash = runtime::get_caller();
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
     /*  this needs to be done manually due to runtime context.
     -> a more complex implementation using the caller stack might fix this.
     */
-    let source: URef = account::get_main_purse();
-    let destination: URef = system::create_purse();
-    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
-    
+        
     runtime::call_contract::<()>(
         contract_hash,
-        "migrate",
+        "fund",
         runtime_args! {
-            ARG_AMOUNT => amount,
-            "destination" => destination,
-            "owner_account" => owner_account
+            ARG_AMOUNT => amount
         },
     );
     
