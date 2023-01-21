@@ -29,16 +29,11 @@ const OWNER_ACCOUNT: &str = "owner";
 */
 
 #[no_mangle]
-pub extern "C" fn migrate_and_fund(){
+pub extern "C" fn migrate(){
     // TBD: restrict access to this entry_point of parent contract.
-    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let source: URef = account::get_main_purse();
-    let owner_account: AccountHash = runtime::get_caller();
-
-    // new purse is created
-    let destination = system::create_purse();
-    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();    
-
+    // this may not work.
+    let owner_account: AccountHash = runtime::get_named_arg("owner_account");
+    let destination: URef = runtime::get_named_arg("destination");
     let entry_points = {
         let mut entry_points = EntryPoints::new();
         let approve = EntryPoint::new(
@@ -190,7 +185,7 @@ pub extern "C" fn call(){
         );
         let migrate = EntryPoint::new(
             "migrate",
-            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
+            vec![Parameter::new(ARG_AMOUNT, CLType::U512), Parameter::new("destination", CLType::URef), Parameter::new("owner_account", CLType::Key)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract,
@@ -210,10 +205,24 @@ pub extern "C" fn call(){
     );
     // call the contract's migration endpoint ("migrate") to store URefs 
     // within the context of contract, rather than account.
+    let amount:U512 = runtime::get_named_arg(ARG_AMOUNT);
+    let source: URef = account::get_main_purse();
+    let owner_account: AccountHash = runtime::get_caller();
+    /*  this needs to be done manually due to runtime context.
+    -> a more complex implementation using the caller stack might fix this.
+    */
+    let source: URef = account::get_main_purse();
+    let destination: URef = system::create_purse();
+    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
+    
     runtime::call_contract::<()>(
         contract_hash,
         "migrate",
         runtime_args! {
+            ARG_AMOUNT => amount,
+            "destination" => destination,
+            "owner_account" => owner_account
         },
     );
+    
 }
