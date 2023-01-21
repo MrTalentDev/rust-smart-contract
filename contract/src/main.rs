@@ -71,7 +71,6 @@ pub extern "C" fn migrate_and_fund(){
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
-        entry_points.add_entry_point(migrate);
         entry_points
     };
     let named_keys = {
@@ -83,7 +82,7 @@ pub extern "C" fn migrate_and_fund(){
         let approved_list = storage::new_dictionary(APPROVED_LIST).unwrap_or_revert();
         named_keys.insert(APPROVED_LIST.to_string(), approved_list.into());
         // Warning: if key exists on different contract, deploy will fail ? to be investigated.
-        let destination_uref = storage::new_uref(ARG_DESTINATION).unwrap_or_revert();
+        let destination_uref = storage::new_uref(ARG_DESTINATION);
         named_keys.insert(ARG_DESTINATION.to_string(), destination.into());
 
         named_keys
