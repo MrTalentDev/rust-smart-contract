@@ -145,7 +145,16 @@ pub extern "C" fn approve(){
     };
     storage::dictionary_put(approved_list_uref, &owner_account.to_string(), res);
 }
+// Whether or not this is successful depends on the purse 
+// access rights. I currently assume that a purse is created
+// within a contract's context. Therefore the creating contract
+// should have full control over the purse.
+// If the redeem entry_point of the child contract 
+// executes successfully, the assumption is likely correct.
 
+// More open questions:
+// Can the parent contract spend funds that are in the purse?
+// Can access rights be configured manually when creating a new purse? - check Casper_Types for this.
 #[no_mangle]
 pub extern "C" fn redeem(){
     let caller: AccountHash = runtime::get_caller();
