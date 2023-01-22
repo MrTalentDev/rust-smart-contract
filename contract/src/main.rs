@@ -12,7 +12,7 @@ use casper_contract::{
     contract_api::{account, runtime, system, storage},
     unwrap_or_revert::UnwrapOrRevert
 };
-use casper_types::{AccessRights, CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
+use casper_types::{CLValue, AccessRights, CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
@@ -34,7 +34,10 @@ pub extern "C" fn migrate(){
     // this may not work.
     let owner_account: AccountHash = runtime::get_named_arg("owner_account");
     // default value for contract purse
-    let destination: AccountHash = AccountHash::new([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
+    
+    // let destination: AccountHash = AccountHash::new([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
+    // before this operation, stored_purse_uref is a default value.
+    let destination: URef = system::create_purse();
     let entry_points = {
         let mut entry_points = EntryPoints::new();
         let approve = EntryPoint::new(
@@ -58,6 +61,7 @@ pub extern "C" fn migrate(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
+        
         let fund = EntryPoint::new(
             "fund",
             vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
@@ -65,6 +69,7 @@ pub extern "C" fn migrate(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
+        
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
@@ -80,7 +85,6 @@ pub extern "C" fn migrate(){
         let approved_list = storage::new_dictionary(APPROVED_LIST).unwrap_or_revert();
         named_keys.insert(APPROVED_LIST.to_string(), approved_list.into());
         // Warning: if key exists on different contract, deploy will fail ? to be investigated.
-        let destination_uref = storage::new_uref(ARG_DESTINATION);
         named_keys.insert(ARG_DESTINATION.to_string(), destination.into());
 
         named_keys
@@ -91,8 +95,11 @@ pub extern "C" fn migrate(){
         Some("child_contract_hash".to_string()),
         Some("child_contract_uref".to_string()),
     );
+    let _destination = CLValue::from_t(destination).unwrap_or_revert();
+    runtime::ret(_destination);
 }
 
+ 
 #[no_mangle]
 pub extern "C" fn fund(){
     // account::get_main_purse() causes an invalid Context error.
@@ -212,11 +219,12 @@ pub extern "C" fn call(){
         );
         let migrate = EntryPoint::new(
             "migrate",
-            vec![Parameter::new("owner_account", CLType::Key), Parameter::new("source", CLType::URef), Parameter::new(ARG_AMOUNT, CLType::U512)],
+            vec![Parameter::new("owner_account", CLType::Key), Parameter::new("destination", CLType::URef)],
             CLType::Unit,
             EntryPointAccess::Public,
             EntryPointType::Contract,
         );
+        
         let fund = EntryPoint::new(
             "fund",
             vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
@@ -247,12 +255,21 @@ pub extern "C" fn call(){
     -> a more complex implementation using the caller stack might fix this.
     */
         
-    runtime::call_contract::<()>(
+    // account::get_main_purse() causes an invalid Context error.
+
+    
+    // override default value with newly created purse
+    // storage::write(stored_purse_uref, destination);
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    // call the new contract.
+    // this will create a new purse under the new contract.
+    let contract_purse:URef = runtime::call_contract::<URef>(
         contract_hash,
-        "fund",
+        "migrate",
         runtime_args! {
-            ARG_AMOUNT => amount
+            "owner_account" => owner_account
         },
     );
-    
+    // fund the new contract's purse
+    system::transfer_from_purse_to_purse(source, contract_purse, amount, None).unwrap_or_revert();
 }
