@@ -38,6 +38,9 @@ pub extern "C" fn migrate(){
     
     // let destination: AccountHash = AccountHash::new([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
     // before this operation, stored_purse_uref is a default value.
+
+    // destination purse is controlled by the parent contract.
+    // change this and add an entry_point to the child contract that'll create the purse instead.
     let destination: URef = system::create_purse();
     let entry_points = {
         let mut entry_points = EntryPoints::new();
@@ -55,17 +58,9 @@ pub extern "C" fn migrate(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
-        let deposit = EntryPoint::new(
-            "deposit",
-            vec![Parameter::new(ARG_AMOUNT, CLType::U512), Parameter::new(ARG_DESTINATION, CLType::String)],
-            CLType::Unit,
-            EntryPointAccess::Public,
-            EntryPointType::Contract
-        );
         
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
-        entry_points.add_entry_point(deposit);
         entry_points
     };
     let named_keys = {
@@ -160,7 +155,10 @@ pub extern "C" fn redeem(){
     system::transfer_from_purse_to_account(stored_purse_uref, caller, amount, None);
 }
 
-// in parent or child context
+/*  Funding will happen in another session code instance.
+    Use this entry_point as a reference in development of session-code wasm.
+    Also, the purse will have to be retrieved from the child contract's
+    "get_purse" entry_point or equiv.
 #[no_mangle]
 pub extern "C" fn deposit(){
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
@@ -179,6 +177,7 @@ pub extern "C" fn deposit(){
     }.into_uref().unwrap_or_revert();
     system::transfer_from_purse_to_purse(source, stored_purse_uref, amount, None);
 }
+*/
 
 // in account context
 #[no_mangle]
@@ -196,14 +195,7 @@ pub extern "C" fn call(){
             "redeem",
             vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
             CLType::Unit,
-            EntryPointAccess::Public,
-            EntryPointType::Contract
-        );
-        let deposit = EntryPoint::new(
-            "deposit",
-            vec![Parameter::new(ARG_AMOUNT, CLType::U512), Parameter::new(ARG_DESTINATION, CLType::String)],
-            CLType::Unit,
-            EntryPointAccess::Public,
+            EntrsyPointAccess::Public,
             EntryPointType::Contract
         );
         let migrate = EntryPoint::new(
@@ -216,7 +208,6 @@ pub extern "C" fn call(){
 
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
-        entry_points.add_entry_point(deposit);
         entry_points.add_entry_point(migrate);
         entry_points
     };
