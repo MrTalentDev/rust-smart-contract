@@ -254,3 +254,18 @@ pub extern "C" fn call(){
     // fund the new contract's purse
     system::transfer_from_purse_to_purse(source, contract_purse, amount, None).unwrap_or_revert();
 }
+
+/* 
+
+    tbd: write session code that takes the child contract as input & is used to fund the purse.
+    additional entry points for child contract:
+    1. get_purse
+    ! Still assuming the purse is owned by the child contract.
+
+    session code will look like this:
+        get contract purse a
+        get main purse b
+        transfer_from_purse_to_purse (a, b)
+
+
+*/
