@@ -28,6 +28,7 @@ const OWNER_ACCOUNT: &str = "owner";
 
 */
 
+// in parent context
 #[no_mangle]
 pub extern "C" fn migrate(){
     // TBD: restrict access to this entry_point of parent contract.
@@ -62,18 +63,9 @@ pub extern "C" fn migrate(){
             EntryPointType::Contract
         );
         
-        let fund = EntryPoint::new(
-            "fund",
-            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
-            CLType::Unit,
-            EntryPointAccess::Public,
-            EntryPointType::Contract
-        );
-        
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
-        entry_points.add_entry_point(fund);
         entry_points
     };
     let named_keys = {
@@ -96,29 +88,11 @@ pub extern "C" fn migrate(){
         Some("child_contract_uref".to_string()),
     );
     let _destination = CLValue::from_t(destination).unwrap_or_revert();
+    // return new purse for this child contract
     runtime::ret(_destination);
 }
 
- 
-#[no_mangle]
-pub extern "C" fn fund(){
-    // account::get_main_purse() causes an invalid Context error.
-    let source: URef = account::get_main_purse();
-    let destination: URef = system::create_purse();
-    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    system::transfer_from_purse_to_purse(source, destination, amount, None).unwrap_or_revert();
-    // before this operation, stored_purse_uref is a default value.
-    
-    /*
-    let stored_purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
-        Some(key) => key,
-        None => runtime::revert(ApiError::MissingKey)
-    }.into_uref().unwrap_or_revert();
-    // override default value with newly created purse
-    storage::write(stored_purse_uref, destination);
-    */
-}
-
+// in parent or child context
 #[no_mangle]
 pub extern "C" fn approve(){
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
@@ -155,6 +129,8 @@ pub extern "C" fn approve(){
 // More open questions:
 // Can the parent contract spend funds that are in the purse?
 // Can access rights be configured manually when creating a new purse? - check Casper_Types for this.
+
+// in parent or child context
 #[no_mangle]
 pub extern "C" fn redeem(){
     let caller: AccountHash = runtime::get_caller();
@@ -183,6 +159,8 @@ pub extern "C" fn redeem(){
     }.into_uref().unwrap_or_revert();
     system::transfer_from_purse_to_account(stored_purse_uref, caller, amount, None);
 }
+
+// in parent or child context
 #[no_mangle]
 pub extern "C" fn deposit(){
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
@@ -201,6 +179,8 @@ pub extern "C" fn deposit(){
     }.into_uref().unwrap_or_revert();
     system::transfer_from_purse_to_purse(source, stored_purse_uref, amount, None);
 }
+
+// in account context
 #[no_mangle]
 pub extern "C" fn call(){
     let entry_points = {
@@ -233,19 +213,11 @@ pub extern "C" fn call(){
             EntryPointAccess::Public,
             EntryPointType::Contract,
         );
-        
-        let fund = EntryPoint::new(
-            "fund",
-            vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
-            CLType::Unit,
-            EntryPointAccess::Public,
-            EntryPointType::Contract
-        );
+
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
         entry_points.add_entry_point(deposit);
         entry_points.add_entry_point(migrate);
-        entry_points.add_entry_point(fund);
         entry_points
     };
     let named_keys = NamedKeys::new();
