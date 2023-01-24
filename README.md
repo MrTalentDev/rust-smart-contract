@@ -19,4 +19,8 @@ an account's main purse. \
 Smart Contracts have entry points defined that are executed in contract context. \
 You can't access an account's main purse from within an entry point. \
 Use session code ( e.g. the "call" function ) instead. \
-To run session code you need to send a .wasm deploy with a "call" function to the get_deploy rpc endpoint.
+To run session code you need to send a .wasm deploy with a "call" function to the get_deploy rpc endpoint. \
+
+# Proposed structure for Session code / Smart contract documentation
+1. Explain how Session code is executed in the account's context once a .wasm is installed through the put_deploy \
+entry_point.
