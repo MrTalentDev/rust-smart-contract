@@ -1,5 +1,5 @@
 # Access and manage access to funds in a Casper Smart Contract
-See */session_code/readme.md to learn how to lock funds up in \
+See [session_code](https://github.com/jonas089/C3PRL0CK/tree/master/session_code) to learn how to lock funds up in \
 a Smart Contract \
 Approved redemption of Tokens from Contract purse
 ## Entry Points
