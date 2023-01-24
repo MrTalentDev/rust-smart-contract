@@ -46,3 +46,5 @@ pub extern "C" fn call() {
     account::set_action_threshold(ActionType::Deployment, Weight::new(2)).unwrap_or_revert();
 }
 ```
+5. Compiling Session code: Copy from perivous docs
+6. Installing wasm/ executing session code: Copy from previous docs
