@@ -23,11 +23,11 @@ To run session code you need to send a .wasm deploy with a "call" function to th
 
 # Proposed structure for Session code / Smart contract documentation
 1. Explain how Session code is executed in the account's context once a .wasm is installed through the put_deploy
-entry_point. A suitable example is the account::main_purse and transfer_from_purse_to_account.
+entry_point. \ A suitable example is the account::main_purse and transfer_from_purse_to_account.
 2. Show how a purse can be created and stored / re-used in a smart contract's context => smart contract has access rights.
 3. Combine **1** and **2** and explain that Session code (**1**) can be used to fund the contract purse created in (**2**).
 4. Re-use the example on multisig from the old doc. 
-This happens in account-context and is therefore session code.
+\ This happens in account-context and is therefore session code.
 ```
 #[no_mangle]
 pub extern "C" fn call() {
