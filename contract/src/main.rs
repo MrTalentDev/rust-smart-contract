@@ -232,20 +232,3 @@ pub extern "C" fn call(){
     // fund the new contract's purse
     system::transfer_from_purse_to_purse(source, contract_purse, amount, None).unwrap_or_revert();
 }
-
-
-/* Session code draft - fund an existing contract purse as caller.
-
-    let contract_hash: ContractHash = runtime::get_named_arg("contract_hash");
-    let amount: U512 = runtime::get_named_arg("amount");
-    let source: URef = account::get_main_purse();
-    let contract_purse:URef = runtime::call_contract::<URef>(
-        contract_hash,
-        "get_purse",
-        runtime_args! {
-        },
-    );
-    system::transfer_from_purse_to_purse(source, contract_purse, amount, None);  
-
-
-*/

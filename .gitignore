@@ -1,3 +1,5 @@
 **/target/**
 contract/target
 contract/target/**
+session_code/contract/target
+session_code/contract/target/**
