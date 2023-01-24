@@ -16,6 +16,7 @@ Redeem tokens form an existing contract purse. Only possible if either in contra
 Session code is executed in the caller account's context. \
 Session code can be used to fund a smart contract / emit a tranfer from \
 an account's main purse. \
-Smart Contracts have entry points defined that are executed within contract context. \
-You can not access an account's main purse from within an entry point. \
+Smart Contracts have entry points defined that are executed in contract context. \
+You can't access an account's main purse from within an entry point. \
 Use session code ( e.g. the "call" function ) instead. \
+To run session code you need to send a .wasm deploy with a "call" function to the get_deploy rpc endpoint.
