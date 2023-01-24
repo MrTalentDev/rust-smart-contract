@@ -12,7 +12,7 @@ use casper_contract::{
     contract_api::{account, runtime, system, storage},
     unwrap_or_revert::UnwrapOrRevert
 };
-use casper_types::{CLValue, AccessRights, CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
+use casper_types::{ContractHash, CLValue, AccessRights, CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
 const ARG_ACCOUNT: &str = "account";
@@ -87,6 +87,17 @@ pub extern "C" fn migrate(){
     runtime::ret(_destination);
 }
 
+#[no_mangle]
+pub extern "C" fn get_purse(){
+    let purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    };
+    let purse: URef = storage::read_or_revert(purse_uref);
+    let _purse = CLValue::from_t(purse).unwrap_or_revert();
+    runtime::ret(_purse);
+}
+
 // in parent or child context
 #[no_mangle]
 pub extern "C" fn approve(){
@@ -155,30 +166,6 @@ pub extern "C" fn redeem(){
     system::transfer_from_purse_to_account(stored_purse_uref, caller, amount, None);
 }
 
-/*  Funding will happen in another session code instance.
-    Use this entry_point as a reference in development of session-code wasm.
-    Also, the purse will have to be retrieved from the child contract's
-    "get_purse" entry_point or equiv.
-#[no_mangle]
-pub extern "C" fn deposit(){
-    let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
-        Some(key) => key,
-        None => runtime::revert(ApiError::MissingKey)
-    }.into_uref().unwrap_or_revert();
-   let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
-    if (owner_account != runtime::get_caller()){
-        runtime::revert(ApiError::PermissionDenied);
-    };
-    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    let source: URef = account::get_main_purse();
-    let stored_purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
-        Some(key) => key,
-        None => runtime::revert(ApiError::MissingKey)
-    }.into_uref().unwrap_or_revert();
-    system::transfer_from_purse_to_purse(source, stored_purse_uref, amount, None);
-}
-*/
-
 // in account context
 #[no_mangle]
 pub extern "C" fn call(){
@@ -195,7 +182,7 @@ pub extern "C" fn call(){
             "redeem",
             vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
             CLType::Unit,
-            EntrsyPointAccess::Public,
+            EntryPointAccess::Public,
             EntryPointType::Contract
         );
         let migrate = EntryPoint::new(
@@ -246,17 +233,19 @@ pub extern "C" fn call(){
     system::transfer_from_purse_to_purse(source, contract_purse, amount, None).unwrap_or_revert();
 }
 
-/* 
 
-    tbd: write session code that takes the child contract as input & is used to fund the purse.
-    additional entry points for child contract:
-    1. get_purse
-    ! Still assuming the purse is owned by the child contract.
+/* Session code draft - fund an existing contract purse as caller.
 
-    session code will look like this:
-        get contract purse a
-        get main purse b
-        transfer_from_purse_to_purse (a, b)
+    let contract_hash: ContractHash = runtime::get_named_arg("contract_hash");
+    let amount: U512 = runtime::get_named_arg("amount");
+    let source: URef = account::get_main_purse();
+    let contract_purse:URef = runtime::call_contract::<URef>(
+        contract_hash,
+        "get_purse",
+        runtime_args! {
+        },
+    );
+    system::transfer_from_purse_to_purse(source, contract_purse, amount, None);  
 
 
 */
