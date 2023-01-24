@@ -8,10 +8,10 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use casper_contract::{
-    contract_api::{account, runtime, system, storage},
-    unwrap_or_revert::UnwrapOrRevert
-};
+    use casper_contract::{
+        contract_api::{account, runtime, system, storage},
+        unwrap_or_revert::UnwrapOrRevert
+    };
 use casper_types::{ContractHash, CLValue, AccessRights, CLType, EntryPointAccess, EntryPointType, URef, U512, Key, ApiError, account::{AccountHash, Account}, contracts::NamedKeys, EntryPoints, EntryPoint, Parameter, runtime_args, RuntimeArgs};
 const ARG_DESTINATION: &str = "destination";
 const ARG_AMOUNT: &str = "amount";
@@ -25,22 +25,12 @@ const OWNER_ACCOUNT: &str = "owner";
 2. call entry points of child contract -> query parent contract to find child contract hash
 3. experiment and maybe allow for multiple child contracts to be installed
 
-
 */
 
 // in parent context
 #[no_mangle]
 pub extern "C" fn migrate(){
-    // TBD: restrict access to this entry_point of parent contract.
-    // this may not work.
     let owner_account: AccountHash = runtime::get_named_arg("owner_account");
-    // default value for contract purse
-    
-    // let destination: AccountHash = AccountHash::new([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
-    // before this operation, stored_purse_uref is a default value.
-
-    // destination purse is controlled by the parent contract.
-    // change this and add an entry_point to the child contract that'll create the purse instead.
     let destination: URef = system::create_purse();
     let entry_points = {
         let mut entry_points = EntryPoints::new();
@@ -65,13 +55,9 @@ pub extern "C" fn migrate(){
     };
     let named_keys = {
         let mut named_keys = NamedKeys::new();
-        // store the installer of the child contract
-        // question: is this the parent contract or the account_hash of the user calling?
-        // for now not relevant as migrate can only be called from call() in parent.
         named_keys.insert(OWNER_ACCOUNT.to_string(), owner_account.into());
         let approved_list = storage::new_dictionary(APPROVED_LIST).unwrap_or_revert();
         named_keys.insert(APPROVED_LIST.to_string(), approved_list.into());
-        // Warning: if key exists on different contract, deploy will fail ? to be investigated.
         named_keys.insert(ARG_DESTINATION.to_string(), destination.into());
 
         named_keys
@@ -125,18 +111,7 @@ pub extern "C" fn approve(){
     };
     storage::dictionary_put(approved_list_uref, &owner_account.to_string(), res);
 }
-// Whether or not this is successful depends on the purse 
-// access rights. I currently assume that a purse is created
-// within a contract's context. Therefore the creating contract
-// should have full control over the purse.
-// If the redeem entry_point of the child contract 
-// executes successfully, the assumption is likely correct.
 
-// More open questions:
-// Can the parent contract spend funds that are in the purse?
-// Can access rights be configured manually when creating a new purse? - check Casper_Types for this.
-
-// in parent or child context
 #[no_mangle]
 pub extern "C" fn redeem(){
     let caller: AccountHash = runtime::get_caller();
@@ -205,23 +180,12 @@ pub extern "C" fn call(){
         Some("parent_contract_hash".to_string()),
         Some("parent_contract_uref".to_string()),
     );
-    // call the contract's migration endpoint ("migrate") to store URefs 
-    // within the context of contract, rather than account.
+
     let source: URef = account::get_main_purse();
     let owner_account: AccountHash = runtime::get_caller();
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    /*  this needs to be done manually due to runtime context.
-    -> a more complex implementation using the caller stack might fix this.
-    */
-        
-    // account::get_main_purse() causes an invalid Context error.
-
-    
-    // override default value with newly created purse
-    // storage::write(stored_purse_uref, destination);
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
-    // call the new contract.
-    // this will create a new purse under the new contract.
+
     let contract_purse:URef = runtime::call_contract::<URef>(
         contract_hash,
         "migrate",
@@ -229,6 +193,6 @@ pub extern "C" fn call(){
             "owner_account" => owner_account
         },
     );
-    // fund the new contract's purse
+    // initial funding of contract purse by contract installer.
     system::transfer_from_purse_to_purse(source, contract_purse, amount, None).unwrap_or_revert();
 }
