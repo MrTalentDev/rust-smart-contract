@@ -19,6 +19,15 @@ const ARG_ACCOUNT: &str = "account";
 const APPROVED_LIST: &str = "approved_list";
 const OWNER_ACCOUNT: &str = "owner";
 
+/* 
+    If you want to install multiple child-contracts throught he parent-contract
+    replace child_contract_hash and child_contract_uref
+    with a unique var, as otherwise a new vault contract will override the existing one.
+
+
+    migrate() installs a child_contract which is stored in the parent_contract's named_keys.
+*/
+
 /*
 
 1. deploy parent contract => installs child contract
@@ -29,6 +38,8 @@ const OWNER_ACCOUNT: &str = "owner";
 
 // in parent context
 #[no_mangle]
+// install a new vault as a "child_contract" under the "parent_contract's" named_keys
+// advantage: keys don't occupy space in account's named_keys
 pub extern "C" fn migrate(){
     let owner_account: AccountHash = runtime::get_named_arg("owner_account");
     let destination: URef = system::create_purse();
@@ -174,6 +185,8 @@ pub extern "C" fn call(){
         entry_points
     };
     let named_keys = NamedKeys::new();
+    
+    // install parent under account's named_keys
     let (contract_hash, contract_version) = storage::new_contract(
         entry_points,
         Some(named_keys),
