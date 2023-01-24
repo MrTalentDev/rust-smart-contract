@@ -22,6 +22,16 @@ Use session code ( e.g. the "call" function ) instead. \
 To run session code you need to send a .wasm deploy with a "call" function to the get_deploy rpc endpoint.
 
 # Proposed structure for Session code / Smart contract documentation
+## From old documentation
+1. Writing a basic smart contract in Rust
+2. Testing Smart contracts
+
+## New documentation
+Goals: \
+1. Teach runtime-context so developers understand that session-code is ran in the account-context, where the account's main-purse can be accessed / CSPR can be spent and multisig conditions can be set. \
+2. Show how re-useable purses can be created in "Vault" contracts that are funded through session-code. The example "Vault" contract has an approve and redeem entry point.
+
+Structure:
 1. Explain how Session code is executed in the account's context once a .wasm is installed through the put_deploy
 entry_point. \
 A suitable example is the account::main_purse and transfer_from_purse_to_account.
@@ -48,3 +58,22 @@ pub extern "C" fn call() {
 ```
 5. Compiling Session code: Copy from perivous docs
 6. Installing wasm/ executing session code: Copy from previous docs
+
+## Smart Contract testing
+An online IDE or any interface would make debugging contracts a lot more fun and writing tests in runtime is quite painful. I personally prefer testing by running my contracts in NCTL and don't see how it's any more convenient to write tests in the crate. \
+Example: \
+```
+    // Verify the value of count is now 1.
+    // count being a value in storage
+    let incremented_count = builder
+        .query(None, count_key, &[])
+        .expect("should be stored value.")
+        .as_cl_value()
+        .expect("should be cl value.")
+        .clone()
+        .into_t::<i32>()
+        .expect("should be i32.");
+
+    assert_eq!(incremented_count, 1);
+```
+Writing such a test function is not much better than installing the contract and querying the value using command line. There may however be more complex cases where writing tests in the crate as per the doc can be beneficial. The old documentation is sufficient for explaining tests in crate.
