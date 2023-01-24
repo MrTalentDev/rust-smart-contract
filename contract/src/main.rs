@@ -59,9 +59,16 @@ pub extern "C" fn migrate(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
-        
+        let get_purse = EntryPoint::new(
+            "get_purse",
+            vec![],
+            CLType::URef,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
+        entry_points.add_entry_point(get_purse);
         entry_points
     };
     let named_keys = {
@@ -156,7 +163,11 @@ pub extern "C" fn redeem(){
 #[no_mangle]
 pub extern "C" fn call(){
     let entry_points = {
+        // approve, redeem and get_purse exist in the parent_contract's named_keys, but only so that they can be "found"
+        // when installing the child_contract. 
+        // only the migrate entry_point is supposed to be called in the parent's context.
         let mut entry_points = EntryPoints::new();
+        // passed to child_contract
         let approve = EntryPoint::new(
             "approve",
             vec![Parameter::new(ARG_ACCOUNT, CLType::Any)],
@@ -164,6 +175,7 @@ pub extern "C" fn call(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
+        // passed to child_contract
         let redeem = EntryPoint::new(
             "redeem",
             vec![Parameter::new(ARG_AMOUNT, CLType::U512)],
@@ -171,16 +183,28 @@ pub extern "C" fn call(){
             EntryPointAccess::Public,
             EntryPointType::Contract
         );
+        // passed to child_contract
+        let get_purse = EntryPoint::new(
+            "get_purse",
+            vec![],
+            CLType::URef,
+            EntryPointAccess::Public,
+            EntryPointType::Contract
+        );
+        // call this entry point on the parent_contract to install a new instance of the child_contract.
+        // the child_contract is the "vault".
+        // the parent contract holds N child_contracts in it's named_keys.
         let migrate = EntryPoint::new(
             "migrate",
             vec![Parameter::new("owner_account", CLType::Key), Parameter::new("destination", CLType::URef)],
-            CLType::Unit,
+            CLType::URef,
             EntryPointAccess::Public,
             EntryPointType::Contract,
         );
 
         entry_points.add_entry_point(approve);
         entry_points.add_entry_point(redeem);
+        entry_points.add_entry_point(get_purse);
         entry_points.add_entry_point(migrate);
         entry_points
     };
