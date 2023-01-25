@@ -95,19 +95,19 @@ This contract is two-sided.
     Again, Session Code is executed in the account context.
 6. Multisig example => from old doc
 
-## Draft
+# Draft
 
 
 
 
-While Session code looks similar to Smart Contract code, it **operates in a different context**. **Session code is executed in the caller account's context** while **Smart Contract code is installed on-chain** to then be executed in the **Contract's context**. Also, Smart Contracts can hold multiple entry points, while Session code has only one Entry Point, also known as the "call" function. \
-Should you use the storage system in a Session Code runtime, it will store and read from your account's named keys. \
-In a Smart Contract's context the storage system will read and write from and to the Contract's named keys.
+Session code and smart contract code may have similar syntax, but they operate in different contexts. Session code is executed within the context of the caller's account, while smart contract code is installed on the blockchain and executed within the context of the contract. This means that session code only has one entry point, known as the "call" function, while smart contracts can have multiple entry points. \
+
+It's also important to note that when using the storage system in session code, data is stored and retrieved from the caller's account's named keys. On the other hand, in a smart contract context, the storage system reads and writes data from and to the contract's named keys.
 **When should you use Session Code?**
 1. When transferring funds from the account's main purse
 2. When configuring multisig thresholds or assigning weights to keys
 3. When you need to call a Smart Contract Entry Point in the account's context
-### Example 1: Session Code transfer
+## Example 1: Session Code transfer
 
 ```
 pub extern "C" fn call():
@@ -124,31 +124,28 @@ Other transfer functions in system include:
 2. transfer_to_account
 3. transfer_from_purse_to_public
 
-### Compiling Session Code
+## Compiling Session Code
 => copy from old documentation 
-### Use put_deploy to run Session Code
+## Use put_deploy to run Session Code
 => copy from old documentation
-### Optional: Testing Session Code - This needs to be discussed further with Karol.
+## Optional: Testing Session Code - This needs to be discussed further with Karol.
 
-### Writing a basic Smart Contract
+## Writing a basic Smart Contract
 => copy counter example from old documentation
-### Testing a basic Smart Contract 
+## Testing a basic Smart Contract 
 => copy counter example from old documentation
 
-### Writing a Vault Smart Contract
+## Writing a Vault Smart Contract
 Context Stack overview: \
 1. A Contract (C1) is installed
 2. A Contract (C1) is called to install a new Contract (C2). (C2= a Vault Contract with a purse under it)
 3. Session code is used to transfer funds to the Vault Contract's (C2) purse
 
 Contract (C1) [source](https://github.com/jonas089/C3PRL0CK) \
-Prerequisite: Install C1 using put_deploy. \
-When installing C1 make sure to supply an "amount" session argument for initial funding of the Vault Contract's (C2) purse. \
-To store Casper in a Contract, we need to create a new purse in the Contract's context => we will do so through a "migrate" Entry Point defined in a Smart Contract. \
+Install Contract (C1) as per [install smart contracts](FUTURE_LINK_GOES_HERE) and supply an amount as a session arg for funding a Vault Contract (C2) on installation / migration.
 
-We assume Contract (C1) has been installed. \
+### How Contract (C1) works:
 Contract (C1) [main.rs](https://github.com/jonas089/C3PRL0CK/blob/master/contract/src/main.rs) \
-
 Contract (C1) holds an Entry Point named "migrate": 
 ```
 #[no_mangle]
@@ -214,10 +211,7 @@ We can split this Entry Point up to make it easier to understand. \
 ### Then adds the newly created "destination" purse to a new Vault Contract's (C2) named keys:
 ```
     let named_keys = {
-        let mut named_keys = NamedKeys::new();
-        named_keys.insert(OWNER_ACCOUNT.to_string(), owner_account.into());
-        let approved_list = storage::new_dictionary(APPROVED_LIST).unwrap_or_revert();
-        named_keys.insert(APPROVED_LIST.to_string(), approved_list.into());
+        ...
         // store the newly created purse in the contract's named keys
         named_keys.insert(ARG_DESTINATION.to_string(), destination.into());
 
