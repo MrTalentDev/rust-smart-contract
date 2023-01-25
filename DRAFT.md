@@ -187,7 +187,8 @@ pub extern "C" fn redeem(){
 ```
 To redeem from the Vault Contract (C2), call the "redeem" Entry Point of Vault Contract (C2). \
 Above you see an example from [main.rs](https://github.com/jonas089/C3PRL0CK/blob/master/contract/src/main.rs) in Contract (C1). \
-C1 and C2 have to share this Entry Point, as C2 is installed through C1. We are however not interested in calling any Entry Point \ other than "migrate" in the context of C1. \
+C1 and C2 have to share this Entry Point, as C2 is installed through C1. \
+We are however not interested in calling any Entry Point other than "migrate" in the context of C1. \
 You can use the casper-client or an SDK to call entry points on Smart Contracts.
 
 2. Approve Entry Point:
