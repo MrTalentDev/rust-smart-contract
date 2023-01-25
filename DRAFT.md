@@ -35,7 +35,7 @@ Other transfer functions in system include:
 => copy counter example from old documentation
 
 ## Writing a Vault Smart Contract
-Context Stack overview: \
+Context Stack overview:
 1. A Contract (C1) is installed
 2. A Contract (C1) is called to install a new Contract (C2). (C2= a Vault Contract with a purse under it)
 3. Session code is used to transfer funds to the Vault Contract's (C2) purse
@@ -101,7 +101,7 @@ pub extern "C" fn migrate(){
     runtime::ret(_destination);
 }
 ```
-We can split this Entry Point up to make it easier to understand. \
+We can split this Entry Point up to make it easier to understand.
 ### First, it creates a new purse named "destination" in the Contract's (C1) context:
 ```
     // create a new purse to later be stored in the contract's named keys
