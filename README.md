@@ -17,7 +17,7 @@ Session code is executed in the caller account's context. \
 Session code can be used to fund a smart contract / emit a tranfer from \
 an account's main purse. \
 Smart Contracts have entry points defined that are executed in contract context. \
-You can't access an account's main purse from within an entry point. \
+You can't access an account's main purse from within an Entry Point. \
 Use session code ( e.g. the "call" function ) instead. \
 To run session code you need to send a .wasm deploy with a "call" function to the get_deploy rpc endpoint.
 
@@ -29,7 +29,7 @@ To run session code you need to send a .wasm deploy with a "call" function to th
 ## New documentation
 Goals: \
 1. Teach runtime-context so developers understand that session-code is ran in the account-context, where the account's main-purse can be accessed / CSPR can be spent and multisig conditions can be set. \
-2. Show how re-useable purses can be created in "Vault" contracts that are funded through session-code. The example "Vault" contract has an approve and redeem entry point.
+2. Show how re-useable purses can be created in "Vault" contracts that are funded through session-code. The example "Vault" contract has an approve and redeem Entry Point.
 
 Structure:
 1. Explain how Session code is executed in the account's context once a .wasm is installed through the put_deploy
@@ -100,13 +100,13 @@ This contract is two-sided.
 
 
 
-While Session code looks similar to Smart Contract code, it **operates in a different context**. **Session code is executed in the caller account's context** while **Smart Contract code is installed on-chain** to then be executed in the **Contract's context**. Also, Smart Contracts can hold multiple entry points, while Session code has only one entry point, also known as the "call" function. \
+While Session code looks similar to Smart Contract code, it **operates in a different context**. **Session code is executed in the caller account's context** while **Smart Contract code is installed on-chain** to then be executed in the **Contract's context**. Also, Smart Contracts can hold multiple entry points, while Session code has only one Entry Point, also known as the "call" function. \
 Should you use the storage system in a Session Code runtime, it will store and read from your account's named keys. \
 In a Smart Contract's context the storage system will read and write from and to the Contract's named keys.
 **When should you use Session Code?**
 1. When transferring funds from the account's main purse
 2. When configuring multisig thresholds or assigning weights to keys
-3. When you need to call a Smart Contract entry point in the account's context
+3. When you need to call a Smart Contract Entry Point in the account's context
 ### Example 1: Session Code transfer
 
 ```
@@ -114,7 +114,7 @@ pub extern "C" fn call():
     let account_purse: URef = account::get_main_purse();
     let amount: U512 = runtime::get_named_arg("amount");
     let recipient_account_hash: AccountHash = runtime::get_named_arg("recipient");
-    system::transfer_from_purse_to_account(account_purse, recipient_account_hash, ...);
+    system::transfer_from_purse_to_account(account_purse, recipient_account_hash, amount, None);
 
 ```
 
@@ -136,11 +136,20 @@ Other transfer functions in system include:
 => copy counter example from old documentation
 
 ### Writing a Vault Smart Contract
-Project [source](https://github.com/jonas089/C3PRL0CK)
-To store Casper in a Contract, we need to create a new purse in the Contract's context => we will do so through a "migrate" entry point defined in a Smart Contract. \
-Stack overview:
+Context Stack overview: \
+1. A Contract (C1) is installed
+2. A Contract (C1) is called to install a new Contract (C2). (C2= a Vault Contract with a purse under it)
+3. Session code is used to transfer funds to the Vault Contract's (C2) purse
 
-Example for creating a purse in and returning it from a Smart Contract entry point: 
+Contract (C1) [source](https://github.com/jonas089/C3PRL0CK) \
+Prerequisite: Install C1 using put_deploy. \
+When installing C1 make sure to supply an "amount" session argument for initial funding of the Vault Contract's (C2) purse. \
+To store Casper in a Contract, we need to create a new purse in the Contract's context => we will do so through a "migrate" Entry Point defined in a Smart Contract. \
+
+We assume Contract (C1) has been installed. \
+Contract (C1) [main.rs](https://github.com/jonas089/C3PRL0CK/blob/master/contract/src/main.rs) \
+
+Contract (C1) holds an Entry Point named "migrate": 
 ```
 #[no_mangle]
 pub extern "C" fn migrate(){
@@ -196,12 +205,13 @@ pub extern "C" fn migrate(){
     runtime::ret(_destination);
 }
 ```
-Here we create a new purse named "destination" in the Smart Contract's context:
+We can split this Entry Point up to make it easier to understand. \
+### First, it creates a new purse named "destination" in the Contract's (C1) context:
 ```
     // create a new purse to later be stored in the contract's named keys
     let destination: URef = system::create_purse();
 ```
-Then we add the newly created "destination" purse to the Contract's named keys:
+### Then adds the newly created "destination" purse to a new Vault Contract's (C2) named keys:
 ```
     let named_keys = {
         let mut named_keys = NamedKeys::new();
@@ -214,7 +224,7 @@ Then we add the newly created "destination" purse to the Contract's named keys:
         named_keys
     };
 ```
-Lastly the Contract is installed on-chain and the "destination" purse is returned from the Contract's named keys.
+### Lastly the new Contract (C2) is installed on-chain and the "destination" purse is returned from the Contract's (C2) named keys.
 ```
     let (contract_hash, contract_version) = storage::new_contract(
         entry_points,
@@ -226,9 +236,13 @@ Lastly the Contract is installed on-chain and the "destination" purse is returne
     // return new purse
     runtime::ret(_destination);
 ```
-You will find the new Contract in the current execution context's named keys. As we are calling a Smart Contract's "migrate" entry point, the context of execution will be the Contract that holds the "migrate" entry point. Therefore we need to query the named keys of the Smart Contract that holds this entry point to find our newly installed contract with the purse stored under its named keys.
+You will find the new Contract (C2) in the current execution context's named keys. As we are calling a Smart Contract's (C1) "migrate" Entry Point, the context of execution will be the Contract (C1) that holds the "migrate" Entry Point. Therefore we need to query the named keys of the Smart Contract (C1) that holds this Entry Point to find our newly installed Contract (C2) with the purse stored under its named keys. 
+1. Query Contract (C1) to find the contract hash of Vault Contract (C2)
+2. Query Vault Contract (C2) to find the Vault Contract's purse in named keys
+Summary: C1 "migrate" Entry Point is called to install C2 (with purse in named keys) \
+C2 returns the purse for use in Session Code.
 ### Deposit Casper in a Vault Contract through Session Code
-To transfer Casper from an account to the "destination" purse, we need a Session code that is executed in the account's context. We supply the contract_hash of the "Vault" contract as a session argument when running the Session code as follows:
+To transfer Casper from an account to the "destination" purse, we need a Session Code (S) that is executed in the account's context. We supply the contract_hash of the "Vault" Contract (C2) as a session argument when running the Session Code (S) as follows:
 ```
 #[no_mangle]
 pub extern "C" fn call() {
@@ -244,6 +258,68 @@ pub extern "C" fn call() {
     system::transfer_from_purse_to_purse(source, contract_purse, amount, None);
 }
 ```
+The get_purse Entry Point of Vault Contract (C2) returns the stored purse from a Vault Contract's (C2) named keys.
 The contract_hash can be found in the newly installed contract's named keys.
+### Redeem from Vault Contract or approve accounts to redeem from Vault Contract
+1. Redeem Entry Point:
+```
+#[no_mangle]
+pub extern "C" fn redeem(){
+    let caller: AccountHash = runtime::get_caller();
+    let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    let approved_list_uref: URef = match runtime::get_key(APPROVED_LIST){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    let approved_list_option = storage::dictionary_get::<Vec<AccountHash>>(approved_list_uref, &owner_account.to_string()).unwrap_or_revert();
+    let approved_list:Vec<AccountHash> = match approved_list_option{
+        Some(list) => list,
+        None => runtime::revert(ApiError::MissingKey)
+    };
+
+    if owner_account != caller && !approved_list.contains(&caller){
+        runtime::revert(ApiError::PermissionDenied);
+    };
+    let stored_purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    system::transfer_from_purse_to_account(stored_purse_uref, caller, amount, None);
+}
+```
+2. Approve Entry Point:
+```
+#[no_mangle]
+pub extern "C" fn approve(){
+    let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
+    let new_account: AccountHash = runtime::get_named_arg(ARG_ACCOUNT);
+    let approved_list_uref: URef = match runtime::get_key(APPROVED_LIST){
+        Some(key) => key,
+        None => runtime::revert(ApiError::MissingKey)
+    }.into_uref().unwrap_or_revert();
+    let approved_list = storage::dictionary_get::<Vec<AccountHash>>(approved_list_uref, &owner_account.to_string()).unwrap_or_revert();
+    let res = match approved_list{
+        Some(mut v) => {
+            v.push(new_account);
+            v
+        },
+        None => {
+            let mut _approved_list: Vec<AccountHash> = Vec::new();
+            _approved_list.push(new_account);
+            _approved_list
+        }
+    };
+    storage::dictionary_put(approved_list_uref, &owner_account.to_string(), res);
+}
+```
 ### Multi Sig Session Code Example
 => copy from old documentation
