@@ -1,5 +1,5 @@
 # Draft
-Session code and smart contract code may have similar syntax, but they operate in different contexts. Session code is executed within the context of the caller's account, while smart contract code is installed on the blockchain and executed within the context of the contract. This means that session code only has one Entry Point, known as the "call" function, while smart contracts can have multiple Entry Points. \
+Session code and smart contract code may have similar syntax, but they operate in different contexts. Session code is executed within the context of the caller's account, while smart contract code is installed on the blockchain and executed within the context of the contract. This means that session code only has one Entry Point, known as the "call" function, while smart contracts can have multiple Entry Points.
 
 It's also important to note that when using the storage system in session code, data is stored and retrieved from the caller's account's named keys. On the other hand, in a smart contract context, the storage system reads and writes data from and to the contract's named keys.
 **When should you use Session Code?**
