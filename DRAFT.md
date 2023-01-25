@@ -129,7 +129,7 @@ We can split this Entry Point up to make it easier to understand.
     // return new purse
     runtime::ret(_destination);
 ```
-You will find the new Contract (C2) in the current execution context's named keys. As we are calling a Smart Contract's (C1) "migrate" Entry Point, the context of execution will be the Contract (C1) that holds the "migrate" Entry Point. Therefore we need to query the named keys of the Smart Contract (C1) that holds this Entry Point to find our newly installed Contract (C2) with the purse stored under its named keys. 
+You will find the new Contract (C2) in the current execution context's named keys. As we are calling a Smart Contract's (C1) "migrate" Entry Point, the context of execution will be the Contract (C1) that holds the "migrate" Entry Point. Therefore we need to query the named keys of the Smart Contract (C1) that holds this Entry Point to find our newly installed Contract (C2) with the purse stored under its named keys. The reason we install C2 through C1 is for us to be able to install and manage multiple instances of Vault contracts with little modification of the C1 contract.
 1. Query Contract (C1) to find the contract hash of Vault Contract (C2)
 2. Query Vault Contract (C2) to find the Vault Contract's purse in named keys
 Summary: C1 "migrate" Entry Point is called to install C2 (with purse in named keys) \
