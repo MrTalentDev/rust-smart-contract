@@ -16,7 +16,7 @@ Redeem tokens form an existing contract purse. Only possible if either in contra
 Session code is executed in the caller account's context. \
 Session code can be used to fund a smart contract / emit a tranfer from \
 an account's main purse. \
-Smart Contracts have entry points defined that are executed in contract context. \
+Smart Contracts have Entry Points defined that are executed in contract context. \
 You can't access an account's main purse from within an Entry Point. \
 Use session code ( e.g. the "call" function ) instead. \
 To run session code you need to send a .wasm deploy with a "call" function to the get_deploy rpc endpoint.
@@ -100,7 +100,7 @@ This contract is two-sided.
 
 
 
-Session code and smart contract code may have similar syntax, but they operate in different contexts. Session code is executed within the context of the caller's account, while smart contract code is installed on the blockchain and executed within the context of the contract. This means that session code only has one entry point, known as the "call" function, while smart contracts can have multiple entry points. \
+Session code and smart contract code may have similar syntax, but they operate in different contexts. Session code is executed within the context of the caller's account, while smart contract code is installed on the blockchain and executed within the context of the contract. This means that session code only has one Entry Point, known as the "call" function, while smart contracts can have multiple Entry Points. \
 
 It's also important to note that when using the storage system in session code, data is stored and retrieved from the caller's account's named keys. On the other hand, in a smart contract context, the storage system reads and writes data from and to the contract's named keys.
 **When should you use Session Code?**
@@ -286,6 +286,11 @@ pub extern "C" fn redeem(){
     system::transfer_from_purse_to_account(stored_purse_uref, caller, amount, None);
 }
 ```
+To redeem from the Vault Contract (C2), call the "redeem" Entry Point of Vault Contract (C2). \
+Above you see an example from [main.rs](https://github.com/jonas089/C3PRL0CK/blob/master/contract/src/main.rs) in Contract (C1). \
+C1 and C2 have to share this Entry Point, as C2 is installed through C1. We are however not interested in calling any Entry Point \ other than "migrate" in the context of C1. \
+You can use the casper-client or an SDK to call entry points on Smart Contracts.
+
 2. Approve Entry Point:
 ```
 #[no_mangle]
@@ -315,5 +320,8 @@ pub extern "C" fn approve(){
     storage::dictionary_put(approved_list_uref, &owner_account.to_string(), res);
 }
 ```
+The "destination" purse is not the only named key that C2 holds. We also specified an approval list in C2's named keys. \
+To successfully redeem funds from C2, one has to either be the installer/ "owner" or a member of the approval list. \
+The installer can add account_hashes to the approval list through the "approve" entry point described above.
 ### Multi Sig Session Code Example
 => copy from old documentation
