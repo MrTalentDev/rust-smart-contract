@@ -29,12 +29,12 @@ Other transfer functions in system include:
 => copy from old documentation
 ## Optional: Testing Session Code - This needs to be discussed further with Karol.
 
-## Writing a basic Smart Contract
+## Example 2: Writing a basic Smart Contract
 => copy counter example from old documentation
 ## Testing a basic Smart Contract 
 => copy counter example from old documentation
 
-## Writing a Vault Smart Contract
+## Example 3: Writing a Vault Smart Contract and funding it through Session Code
 Context Stack overview:
 1. A Contract (C1) is installed
 2. A Contract (C1) is called to install a new Contract (C2). (C2= a Vault Contract with a purse under it)
