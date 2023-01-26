@@ -47,7 +47,7 @@ People should know how to call Smart Contracts before Example 3.
 People should know how dictionaries work on Casper before Example 3.
 
 ## Example 3: Writing a Vault Smart Contract and funding it through Session Code
-**Description**
+**Description** \
 This is a new example that'll help developers better understand when to use Session Code and when to write Smart Contracts. \
 Additionally, it'll teach the creation of re-useable purses, runtime context and vault funding.
 
