@@ -34,6 +34,18 @@ Other transfer functions in system include:
 ## Testing a basic Smart Contract 
 => copy counter example from old documentation
 
+## Installing Smart Contracts and Querying global state
+=> copy from old documentation. \
+This makes use of the counter example.
+
+## Calling Smart Contracts with the Rust Client
+=> moved up from old documentation. \
+People should know how to call Smart Contracts before Example 3.
+
+## Reading from and Writing to Dictionaries
+=> moved up from old documentation. \
+People should know how dictionaries work on Casper before Example 3.
+
 ## Example 3: Writing a Vault Smart Contract and funding it through Session Code
 Context Stack overview:
 1. A Contract (C1) is installed
@@ -224,4 +236,6 @@ The "destination" purse is not the only named key that C2 holds. We also specifi
 To successfully redeem funds from C2, one has to either be the installer/ "owner" or a member of the approval list. \
 The installer can add account_hashes to the approval list through the "approve" entry point described above.
 ### Multi Sig Session Code Example
+=> copy from old documentation
+### Upgradeable Smart Contracts
 => copy from old documentation
