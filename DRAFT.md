@@ -47,10 +47,16 @@ People should know how to call Smart Contracts before Example 3.
 People should know how dictionaries work on Casper before Example 3.
 
 ## Example 3: Writing a Vault Smart Contract and funding it through Session Code
+**Description**
+This is a new example that'll help developers better understand when to use Session Code and when to write Smart Contracts. \
+Additionally, it'll teach the creation of re-useable purses, runtime context and vault funding.
+
 Context Stack overview:
 1. A Contract (C1) is installed
 2. A Contract (C1) is called to install a new Contract (C2). (C2= a Vault Contract with a purse under it)
 3. Session code is used to transfer funds to the Vault Contract's (C2) purse
+
+**End of Description**
 
 Contract (C1) [source](https://github.com/jonas089/C3PRL0CK) \
 Install Contract (C1) as per [install smart contracts](FUTURE_LINK_GOES_HERE) and supply an amount as a session arg for funding a Vault Contract (C2) on installation / migration.
@@ -235,6 +241,7 @@ pub extern "C" fn approve(){
 The "destination" purse is not the only named key that C2 holds. We also specified an approval list in C2's named keys. \
 To successfully redeem funds from C2, one has to either be the installer/ "owner" or a member of the approval list. \
 The installer can add account_hashes to the approval list through the "approve" entry point described above.
+
 ### Multi Sig Session Code Example
 => copy from old documentation
 ### Upgradeable Smart Contracts
