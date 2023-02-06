@@ -96,7 +96,7 @@ pub extern "C" fn get_purse(){
     let purse_uref: URef = match runtime::get_key(ARG_DESTINATION){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
-    };
+    }.into_uref().unwrap_or_revert();
     let purse: URef = storage::read_or_revert(purse_uref);
     let _purse = CLValue::from_t(purse).unwrap_or_revert();
     runtime::ret(_purse);
@@ -105,11 +105,16 @@ pub extern "C" fn get_purse(){
 // in parent or child context
 #[no_mangle]
 pub extern "C" fn approve(){
+    let caller: AccountHash = runtime::get_caller();
     let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
     }.into_uref().unwrap_or_revert();
     let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
+    // only the owner of the contract instance is allowed to approve accounts for redemption.
+    if owner_account != caller{
+        runtime::revert(ApiError::PermissionDenied);
+    };
     let new_account: AccountHash = runtime::get_named_arg(ARG_ACCOUNT);
     let approved_list_uref: URef = match runtime::get_key(APPROVED_LIST){
         Some(key) => key,
