@@ -106,11 +106,10 @@ pub extern "C" fn get_purse(){
 #[no_mangle]
 pub extern "C" fn approve(){
     let caller: AccountHash = runtime::get_caller();
-    let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
+    let owner_account: AccountHash = match runtime::get_key(OWNER_ACCOUNT){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
-    }.into_uref().unwrap_or_revert();
-    let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
+    }.into_account().unwrap_or_revert();
     // only the owner of the contract instance is allowed to approve accounts for redemption.
     if owner_account != caller{
         runtime::revert(ApiError::PermissionDenied);
@@ -138,11 +137,10 @@ pub extern "C" fn approve(){
 #[no_mangle]
 pub extern "C" fn redeem(){
     let caller: AccountHash = runtime::get_caller();
-    let owner_account_uref: URef = match runtime::get_key(OWNER_ACCOUNT){
+    let owner_account: AccountHash = match runtime::get_key(OWNER_ACCOUNT){
         Some(key) => key,
         None => runtime::revert(ApiError::MissingKey)
-    }.into_uref().unwrap_or_revert();
-    let owner_account: AccountHash = storage::read_or_revert(owner_account_uref);
+    }.into_account().unwrap_or_revert();
     let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
     let approved_list_uref: URef = match runtime::get_key(APPROVED_LIST){
         Some(key) => key,
